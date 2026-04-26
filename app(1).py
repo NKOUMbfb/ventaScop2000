@@ -238,13 +238,29 @@ with st.sidebar:
 if page == "➕ Saisie des données":
 
     st.markdown("""
-    <div style='margin-bottom:2rem;'>
+    <div style='text-align:center; padding: 2rem 0 1.5rem; border-bottom: 1px solid #2a2a3d; margin-bottom: 2rem;'>
+        <!-- LOGO -->
+        <div style='display:inline-flex; align-items:center; gap:14px; margin-bottom:1rem;'>
+            <div style='background:#f0c040; color:#0a0a0f; font-family:Syne,sans-serif;
+                        font-weight:900; font-size:2rem; width:60px; height:60px;
+                        border-radius:14px; display:flex; align-items:center; justify-content:center;'>VS</div>
+            <div style='text-align:left;'>
+                <div style='font-family:Syne,sans-serif; font-weight:800; font-size:2.2rem;
+                            color:#e8e8f0; letter-spacing:-1px; line-height:1;'>
+                    Venta<span style='color:#f0c040;'>Scope</span>
+                </div>
+                <div style='color:#55556a; font-size:0.72rem; letter-spacing:2px; text-transform:uppercase; margin-top:2px;'>
+                    Application de Collecte & Analyse des Ventes
+                </div>
+            </div>
+        </div>
+        <br/>
         <div style='display:inline-block; background:rgba(240,192,64,0.1); border:1px solid rgba(240,192,64,0.3);
                     color:#f0c040; font-size:0.7rem; letter-spacing:3px; text-transform:uppercase;
                     padding:4px 14px; border-radius:20px; margin-bottom:12px;'>
-            INF 232 — EC2 · TP Collecte
+            INF 232 — EC2 · TP Collecte de données
         </div>
-        <h1 style='font-size:2.5rem; letter-spacing:-1px; margin:0;'>
+        <h1 style='font-size:2rem; letter-spacing:-1px; margin:8px 0 0;'>
             Saisie des <span style='color:#f0c040; font-style:italic;'>transactions</span>
         </h1>
         <p style='color:#8888aa; font-size:0.85rem; margin-top:8px;'>
