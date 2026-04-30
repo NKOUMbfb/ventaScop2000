@@ -199,7 +199,7 @@ with st.sidebar:
         <div style='font-family:Syne,sans-serif; font-weight:700; font-size:1.1rem; color:#e8e8f0;'>
             Venta<span style='color:#f0c040'>Scope</span>
         </div>
-        <div style='color:#55556a; font-size:0.7rem; margin-top:4px;'>INF 232 — EC2 · TP Collecte</div>
+        <div style='color:#55556a; font-size:0.7rem; margin-top:4px;'>Plateforme Commerciale & Analytique</div>
     </div>
     """, unsafe_allow_html=True)
 
@@ -226,9 +226,9 @@ with st.sidebar:
     st.divider()
     st.markdown("""
     <div style='color:#55556a; font-size:0.65rem; text-align:center; line-height:1.6;'>
-        Nkoum Belinga Felix Berenger<br>
-        INF 232 — EC2<br>
-        <span style='color:#f0c040;'>Commerce & Ventes</span>
+        © 2025 VentaScope<br>
+        Tous droits réservés<br>
+        <span style='color:#f0c040;'>Commerce & Ventes — Cameroun</span>
     </div>
     """, unsafe_allow_html=True)
 
@@ -258,7 +258,7 @@ if page == "➕ Saisie des données":
         <div style='display:inline-block; background:rgba(240,192,64,0.1); border:1px solid rgba(240,192,64,0.3);
                     color:#f0c040; font-size:0.7rem; letter-spacing:3px; text-transform:uppercase;
                     padding:4px 14px; border-radius:20px; margin-bottom:12px;'>
-            INF 232 — EC2 · TP Collecte de données
+            Plateforme de gestion commerciale
         </div>
         <h1 style='font-size:2rem; letter-spacing:-1px; margin:8px 0 0;'>
             Saisie des <span style='color:#f0c040; font-style:italic;'>transactions</span>
