@@ -162,6 +162,10 @@ DEMO_DATA = [
 # ============================================================
 if "data" not in st.session_state:
     st.session_state.data = pd.DataFrame(DEMO_DATA)
+if "show_payment" not in st.session_state:
+    st.session_state["show_payment"] = False
+if "pending_record" not in st.session_state:
+    st.session_state["pending_record"] = None
 
 # ============================================================
 # FONCTIONS UTILITAIRES
@@ -315,9 +319,312 @@ if page == "➕ Saisie des données":
                 "client": f_client or "—",
                 "remarques": f_remarques,
             }
-            save_record(record)
-            st.success(f"✅ Vente enregistrée avec succès ! Total : **{fmt_fcfa(f_quantite * f_prix)}**")
-            st.balloons()
+            st.session_state["pending_record"] = record
+            st.session_state["show_payment"] = True
+
+# ============================================================
+# MODULE PAIEMENT — 4 moyens : Orange Money, MTN MoMo, Carte, Chèque
+# ============================================================
+import time, random, string
+
+def gen_ref(prefix):
+    return prefix + "".join(random.choices(string.ascii_uppercase + string.digits, k=10))
+
+def recap_montant(record, montant, border_color):
+    st.markdown(f"""
+    <div style='background:#1c1c28; border:1px solid {border_color}; border-radius:12px;
+                padding:1.2rem; margin-bottom:1.2rem;'>
+        <div style='display:flex; justify-content:space-between; align-items:center;'>
+            <div>
+                <div style='color:#8888aa; font-size:0.68rem; letter-spacing:1px; text-transform:uppercase;'>
+                    Montant à payer</div>
+                <div style='color:{border_color}; font-family:Syne,sans-serif; font-weight:800; font-size:1.8rem;'>
+                    {fmt_fcfa(montant)}</div>
+            </div>
+            <div style='text-align:right;'>
+                <div style='color:#8888aa; font-size:0.68rem; letter-spacing:1px; text-transform:uppercase;'>Produit</div>
+                <div style='color:#e8e8f0; font-size:0.9rem; font-weight:600;'>{record["produit"]}</div>
+                <div style='color:#8888aa; font-size:0.75rem;'>
+                    {record["quantite"]} unité(s) × {fmt_fcfa(record["prix_unitaire"])}</div>
+            </div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+def confirmation_box(montant, ref, couleurs, detail):
+    c1, c2 = couleurs
+    st.markdown(f"""
+    <div style='background:linear-gradient(135deg,{c1},{c2}); border-radius:16px; padding:2rem;
+                text-align:center; margin:1rem 0; box-shadow:0 8px 32px rgba(0,0,0,0.3);'>
+        <div style='font-size:3rem; margin-bottom:0.5rem;'>✅</div>
+        <div style='color:white; font-family:Syne,sans-serif; font-weight:800; font-size:1.5rem; margin-bottom:0.5rem;'>
+            Paiement Réussi !</div>
+        <div style='color:rgba(255,255,255,0.9); font-size:0.9rem; margin-bottom:1rem;'>
+            {fmt_fcfa(montant)} — {detail}</div>
+        <div style='background:rgba(255,255,255,0.2); border-radius:8px; padding:0.6rem 1.2rem; display:inline-block;'>
+            <span style='color:white; font-size:0.8rem; letter-spacing:1px;'>
+                Référence : <strong>{ref}</strong></span>
+        </div>
+        <div style='color:rgba(255,255,255,0.7); font-size:0.72rem; margin-top:0.8rem;'>📲 Confirmation envoyée</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+def annuler_paiement():
+    st.session_state["show_payment"] = False
+    st.session_state["pending_record"] = None
+    st.rerun()
+
+def finaliser(record, remarque, ref, couleurs, detail):
+    record["statut"] = "Complétée"
+    record["remarques"] = remarque
+    save_record(record)
+    st.session_state["show_payment"] = False
+    st.session_state["pending_record"] = None
+    confirmation_box(record["total"], ref, couleurs, detail)
+    st.balloons()
+
+if st.session_state.get("show_payment") and st.session_state.get("pending_record"):
+    record = st.session_state["pending_record"]
+    montant = record["total"]
+
+    st.markdown("""
+    <div style='margin:1.5rem 0 1rem;'>
+        <div style='color:#8888aa; font-size:0.68rem; letter-spacing:2px;
+                    text-transform:uppercase; margin-bottom:8px;'>Choisissez votre moyen de paiement</div>
+        <h2 style='font-size:1.5rem; letter-spacing:-0.5px; margin:0;'>
+            💳 Paiement <span style='color:#f0c040;'>sécurisé</span>
+        </h2>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # Sélecteur 4 modes
+    mode_paiement = st.radio(
+        "",
+        ["🟠 Orange Money", "🟡 MTN Mobile Money", "💳 Carte bancaire", "📝 Chèque bancaire"],
+        horizontal=True,
+        label_visibility="collapsed"
+    )
+    st.divider()
+
+    # ═══════════════════════════════
+    # 1. ORANGE MONEY
+    # ═══════════════════════════════
+    if mode_paiement == "🟠 Orange Money":
+        st.markdown("""
+        <div style='background:linear-gradient(135deg,#ff6600,#ff8c00); border-radius:14px;
+                    padding:1.2rem 1.5rem; margin-bottom:1.2rem; box-shadow:0 6px 24px rgba(255,102,0,0.25);
+                    display:flex; align-items:center; gap:12px;'>
+            <div style='background:white; border-radius:50%; width:44px; height:44px;
+                        display:flex; align-items:center; justify-content:center; font-size:1.4rem;'>🟠</div>
+            <div>
+                <div style='color:white; font-family:Syne,sans-serif; font-weight:800; font-size:1.1rem;'>Orange Money</div>
+                <div style='color:rgba(255,255,255,0.8); font-size:0.7rem; letter-spacing:1px;'>Paiement mobile sécurisé — Cameroun</div>
+            </div>
+        </div>""", unsafe_allow_html=True)
+
+        recap_montant(record, montant, "#ff6600")
+        with st.form("form_om"):
+            col1, col2 = st.columns(2)
+            with col1: om_num = st.text_input("📱 Numéro Orange Money *", placeholder="6XX XX XX XX", max_chars=12)
+            with col2: om_nom = st.text_input("👤 Nom du titulaire *", placeholder="Nom complet")
+            om_pin = st.text_input("🔐 Code PIN *", type="password", placeholder="••••••", max_chars=6)
+            st.markdown("<div style='background:rgba(255,102,0,0.08);border:1px solid rgba(255,102,0,0.2);border-radius:8px;padding:0.8rem;font-size:0.75rem;color:#8888aa;'>🔒 Sécurisé · Confirmation SMS après paiement</div>", unsafe_allow_html=True)
+            ca, cb = st.columns(2)
+            with ca: ann = st.form_submit_button("✕ Annuler", use_container_width=True)
+            with cb: pay = st.form_submit_button("🟠 Payer", use_container_width=True)
+        if ann: annuler_paiement()
+        if pay:
+            if not om_num or not om_nom or not om_pin: st.error("⚠️ Remplissez tous les champs.")
+            elif not om_num.replace(" ","").isdigit(): st.error("⚠️ Numéro invalide.")
+            elif len(om_pin) < 4: st.error("⚠️ PIN trop court.")
+            else:
+                with st.spinner("🟠 Connexion Orange Money…"): time.sleep(1.5)
+                with st.spinner("🔐 Vérification…"): time.sleep(1.5)
+                with st.spinner("💸 Traitement…"): time.sleep(2)
+                ref = gen_ref("OM-")
+                finaliser(record, f"Orange Money {om_num} — Réf: {ref}", ref, ("#ff6600","#ff8c00"), f"Orange Money · {om_num}")
+
+    # ═══════════════════════════════
+    # 2. MTN MOBILE MONEY
+    # ═══════════════════════════════
+    elif mode_paiement == "🟡 MTN Mobile Money":
+        st.markdown("""
+        <div style='background:linear-gradient(135deg,#ffcc00,#ff9900); border-radius:14px;
+                    padding:1.2rem 1.5rem; margin-bottom:1.2rem; box-shadow:0 6px 24px rgba(255,204,0,0.25);
+                    display:flex; align-items:center; gap:12px;'>
+            <div style='background:white; border-radius:50%; width:44px; height:44px;
+                        display:flex; align-items:center; justify-content:center; font-size:1.4rem;'>🟡</div>
+            <div>
+                <div style='color:#0a0a0f; font-family:Syne,sans-serif; font-weight:800; font-size:1.1rem;'>MTN Mobile Money</div>
+                <div style='color:rgba(0,0,0,0.6); font-size:0.7rem; letter-spacing:1px;'>MoMo · Paiement mobile sécurisé — Cameroun</div>
+            </div>
+        </div>""", unsafe_allow_html=True)
+
+        recap_montant(record, montant, "#ffcc00")
+        with st.form("form_mtn"):
+            col1, col2 = st.columns(2)
+            with col1: mtn_num = st.text_input("📱 Numéro MTN MoMo *", placeholder="6XX XX XX XX", max_chars=12)
+            with col2: mtn_nom = st.text_input("👤 Nom du titulaire *", placeholder="Nom complet")
+            mtn_pin = st.text_input("🔐 Code PIN MoMo *", type="password", placeholder="••••••", max_chars=6)
+            st.markdown("<div style='background:rgba(255,204,0,0.08);border:1px solid rgba(255,204,0,0.2);border-radius:8px;padding:0.8rem;font-size:0.75rem;color:#8888aa;'>🔒 Sécurisé · Confirmation SMS après paiement</div>", unsafe_allow_html=True)
+            ca, cb = st.columns(2)
+            with ca: ann = st.form_submit_button("✕ Annuler", use_container_width=True)
+            with cb: pay = st.form_submit_button("🟡 Payer via MoMo", use_container_width=True)
+        if ann: annuler_paiement()
+        if pay:
+            if not mtn_num or not mtn_nom or not mtn_pin: st.error("⚠️ Remplissez tous les champs.")
+            elif not mtn_num.replace(" ","").isdigit(): st.error("⚠️ Numéro invalide.")
+            elif len(mtn_pin) < 4: st.error("⚠️ PIN trop court.")
+            else:
+                with st.spinner("🟡 Connexion MTN MoMo…"): time.sleep(1.5)
+                with st.spinner("🔐 Vérification du compte…"): time.sleep(1.5)
+                with st.spinner("💸 Débit en cours…"): time.sleep(2)
+                ref = gen_ref("MTN-")
+                finaliser(record, f"MTN MoMo {mtn_num} — Réf: {ref}", ref, ("#ffcc00","#ff9900"), f"MTN MoMo · {mtn_num}")
+
+    # ═══════════════════════════════
+    # 3. CARTE BANCAIRE
+    # ═══════════════════════════════
+    elif mode_paiement == "💳 Carte bancaire":
+        st.markdown("""
+        <div style='background:linear-gradient(135deg,#1a1a3e,#2d2d6b); border-radius:14px;
+                    padding:1.2rem 1.5rem; margin-bottom:1.2rem; box-shadow:0 6px 24px rgba(26,26,62,0.4);
+                    display:flex; align-items:center; gap:12px;'>
+            <div style='background:white; border-radius:8px; width:52px; height:34px;
+                        display:flex; align-items:center; justify-content:center; font-size:1.2rem;'>💳</div>
+            <div>
+                <div style='color:white; font-family:Syne,sans-serif; font-weight:800; font-size:1.1rem;'>Carte Bancaire</div>
+                <div style='color:rgba(255,255,255,0.7); font-size:0.7rem; letter-spacing:1px;'>Visa · Mastercard · 3D Secure</div>
+            </div>
+        </div>""", unsafe_allow_html=True)
+
+        recap_montant(record, montant, "#a78bfa")
+
+        st.markdown("""
+        <div style='background:linear-gradient(135deg,#1c1c28,#2a2a3d); border:1px solid #a78bfa;
+                    border-radius:16px; padding:1.5rem; margin-bottom:1.2rem;'>
+            <div style='display:flex; justify-content:space-between; margin-bottom:1.2rem;'>
+                <span style='color:#a78bfa; font-weight:700; font-size:0.9rem; letter-spacing:2px;'>VENTABANK</span>
+                <span style='font-size:1.1rem;'>💳</span>
+            </div>
+            <div style='color:#e8e8f0; font-size:1rem; letter-spacing:5px; margin-bottom:1.2rem;'>
+                •••• •••• •••• ••••</div>
+            <div style='display:flex; justify-content:space-between; font-size:0.75rem;'>
+                <div><div style='color:#55556a; font-size:0.6rem;'>TITULAIRE</div>
+                     <div style='color:#e8e8f0;'>VOTRE NOM</div></div>
+                <div><div style='color:#55556a; font-size:0.6rem;'>EXPIRE</div>
+                     <div style='color:#e8e8f0;'>MM/AA</div></div>
+                <div style='color:#a78bfa; font-weight:700;'>VISA</div>
+            </div>
+        </div>""", unsafe_allow_html=True)
+
+        with st.form("form_carte"):
+            col1, col2 = st.columns(2)
+            with col1: c_nom = st.text_input("👤 Nom sur la carte *", placeholder="NOM PRÉNOM")
+            with col2: c_num = st.text_input("💳 Numéro *", placeholder="1234 5678 9012 3456", max_chars=19)
+            col3, col4, col5 = st.columns(3)
+            with col3: c_mois = st.selectbox("📅 Mois *", [f"{i:02d}" for i in range(1,13)])
+            with col4: c_annee = st.selectbox("📅 Année *", [str(y) for y in range(2025,2032)])
+            with col5: c_cvv = st.text_input("🔐 CVV *", type="password", placeholder="•••", max_chars=3)
+            c_type = st.selectbox("🏦 Réseau", ["Visa", "Mastercard"])
+            st.markdown("<div style='background:rgba(167,139,250,0.08);border:1px solid rgba(167,139,250,0.2);border-radius:8px;padding:0.8rem;font-size:0.75rem;color:#8888aa;'>🔒 3D Secure · SSL · Aucune donnée stockée</div>", unsafe_allow_html=True)
+            ca, cb = st.columns(2)
+            with ca: ann = st.form_submit_button("✕ Annuler", use_container_width=True)
+            with cb: pay = st.form_submit_button("💳 Payer maintenant", use_container_width=True)
+        if ann: annuler_paiement()
+        if pay:
+            num_clean = c_num.replace(" ","").replace("-","")
+            if not c_nom or not c_num or not c_cvv: st.error("⚠️ Remplissez tous les champs.")
+            elif len(num_clean) != 16 or not num_clean.isdigit(): st.error("⚠️ Numéro de carte invalide (16 chiffres).")
+            elif len(c_cvv) != 3 or not c_cvv.isdigit(): st.error("⚠️ CVV invalide (3 chiffres).")
+            else:
+                with st.spinner("💳 Connexion au terminal…"): time.sleep(1.5)
+                with st.spinner("🔐 Authentification 3D Secure…"): time.sleep(2)
+                with st.spinner("✅ Autorisation bancaire…"): time.sleep(1.5)
+                ref = gen_ref("CB-")
+                finaliser(record, f"Carte {c_type} •••• {num_clean[-4:]} — Réf: {ref}", ref, ("#1a1a3e","#4c4ca0"), f"Carte {c_type} •••• {num_clean[-4:]}")
+
+    # ═══════════════════════════════
+    # 4. CHÈQUE BANCAIRE
+    # ═══════════════════════════════
+    elif mode_paiement == "📝 Chèque bancaire":
+        st.markdown("""
+        <div style='background:linear-gradient(135deg,#2d4a2d,#3d6b3d); border-radius:14px;
+                    padding:1.2rem 1.5rem; margin-bottom:1.2rem; box-shadow:0 6px 24px rgba(45,74,45,0.4);
+                    display:flex; align-items:center; gap:12px;'>
+            <div style='background:white; border-radius:8px; width:44px; height:44px;
+                        display:flex; align-items:center; justify-content:center; font-size:1.4rem;'>📝</div>
+            <div>
+                <div style='color:white; font-family:Syne,sans-serif; font-weight:800; font-size:1.1rem;'>Chèque Bancaire</div>
+                <div style='color:rgba(255,255,255,0.7); font-size:0.7rem; letter-spacing:1px;'>Paiement par chèque certifié</div>
+            </div>
+        </div>""", unsafe_allow_html=True)
+
+        recap_montant(record, montant, "#4ecdc4")
+
+        # Aperçu chèque visuel
+        st.markdown(f"""
+        <div style='background:#fffef0; border:2px solid #d4c060; border-radius:12px;
+                    padding:1.5rem; margin-bottom:1.2rem; color:#333; font-family:serif;'>
+            <div style='display:flex; justify-content:space-between; margin-bottom:1rem;'>
+                <div style='font-size:0.7rem; color:#666;'>CHÈQUE BANCAIRE</div>
+                <div style='font-size:0.7rem; color:#666;'>N° ___________</div>
+            </div>
+            <div style='margin-bottom:0.8rem;'>
+                <span style='font-size:0.72rem; color:#888;'>Payez contre ce chèque la somme de : </span>
+                <span style='font-weight:700; color:#333; font-size:0.85rem;'>{fmt_fcfa(montant)}</span>
+            </div>
+            <div style='border-top:1px dashed #ccc; margin:0.8rem 0; padding-top:0.8rem;'>
+                <div style='font-size:0.7rem; color:#888;'>À l'ordre de : <strong>VentaScope Commerce</strong></div>
+            </div>
+            <div style='display:flex; justify-content:space-between; margin-top:1rem;'>
+                <div style='font-size:0.7rem; color:#888;'>Date : __________</div>
+                <div style='font-size:0.7rem; color:#888;'>Signature : _________________</div>
+            </div>
+        </div>""", unsafe_allow_html=True)
+
+        with st.form("form_cheque"):
+            col1, col2 = st.columns(2)
+            with col1: ch_num = st.text_input("📋 Numéro du chèque *", placeholder="Ex: 0012345678")
+            with col2: ch_banque = st.text_input("🏦 Banque émettrice *", placeholder="Ex: BICEC, Afriland, SCB…")
+            col3, col4 = st.columns(2)
+            with col3: ch_titulaire = st.text_input("👤 Nom du titulaire *", placeholder="Nom complet")
+            with col4: ch_date = st.date_input("📅 Date du chèque *", value=date.today())
+            ch_montant = st.number_input("💰 Montant inscrit sur le chèque (FCFA) *", min_value=0, value=int(montant), step=1000)
+            st.markdown("<div style='background:rgba(78,205,196,0.08);border:1px solid rgba(78,205,196,0.2);border-radius:8px;padding:0.8rem;font-size:0.75rem;color:#8888aa;line-height:1.6;'>⚠️ Le chèque sera vérifié avant validation définitive · Délai de compensation : 2-3 jours ouvrables</div>", unsafe_allow_html=True)
+            ca, cb = st.columns(2)
+            with ca: ann = st.form_submit_button("✕ Annuler", use_container_width=True)
+            with cb: pay = st.form_submit_button("📝 Valider le chèque", use_container_width=True)
+        if ann: annuler_paiement()
+        if pay:
+            if not ch_num or not ch_banque or not ch_titulaire: st.error("⚠️ Remplissez tous les champs.")
+            elif ch_montant != int(montant): st.error(f"⚠️ Le montant du chèque doit être {fmt_fcfa(montant)}.")
+            else:
+                with st.spinner("📝 Enregistrement du chèque…"): time.sleep(1.5)
+                with st.spinner("🏦 Vérification bancaire…"): time.sleep(2)
+                ref = gen_ref("CHQ-")
+                record["statut"] = "En attente"
+                record["remarques"] = f"Chèque N°{ch_num} — {ch_banque} — Réf: {ref}"
+                save_record(record)
+                st.session_state["show_payment"] = False
+                st.session_state["pending_record"] = None
+                st.markdown(f"""
+                <div style='background:linear-gradient(135deg,#2d4a2d,#4ecdc4); border-radius:16px;
+                            padding:2rem; text-align:center; margin:1rem 0;'>
+                    <div style='font-size:3rem; margin-bottom:0.5rem;'>📝</div>
+                    <div style='color:white; font-family:Syne,sans-serif; font-weight:800; font-size:1.3rem; margin-bottom:0.5rem;'>
+                        Chèque Enregistré !</div>
+                    <div style='color:rgba(255,255,255,0.9); font-size:0.85rem; margin-bottom:1rem;'>
+                        Chèque N°{ch_num} · {ch_banque} · {fmt_fcfa(montant)}</div>
+                    <div style='background:rgba(255,255,255,0.2); border-radius:8px; padding:0.6rem 1.2rem; display:inline-block;'>
+                        <span style='color:white; font-size:0.8rem;'>Référence : <strong>{ref}</strong></span>
+                    </div>
+                    <div style='color:rgba(255,255,255,0.7); font-size:0.72rem; margin-top:0.8rem;'>
+                        ⏳ Statut "En attente" jusqu'à compensation bancaire (2-3 jours)
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+                st.balloons()
 
 # ============================================================
 # PAGE 2 — BASE DE DONNÉES
